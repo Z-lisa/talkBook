@@ -103,9 +103,16 @@ app.get('/api/user', authenticateToken, (req, res) => {
   res.json(user);
 });
 
-// 获取用户统计信息
+// 获取当前用户统计信息
 app.get('/api/user/stats', authenticateToken, (req, res) => {
   const stats = db.getUserStats(req.user.userId);
+  res.json(stats);
+});
+
+// 获取指定用户统计信息
+app.get('/api/users/:id/stats', (req, res) => {
+  const userId = parseInt(req.params.id);
+  const stats = db.getUserStats(userId);
   res.json(stats);
 });
 
@@ -145,7 +152,8 @@ app.get('/api/posts', (req, res) => {
       author: author ? {
         id: author.id,
         username: author.username,
-        avatar: author.avatar
+        avatar: author.avatar,
+        isFollowing: userId ? db.hasFollowed(userId, author.id) : false
       } : null
     };
   });
@@ -436,7 +444,7 @@ app.post('/api/users/:id/follow', authenticateToken, (req, res) => {
   });
 });
 
-// 获取关注列表
+// 获取当前用户的关注列表
 app.get('/api/user/following', authenticateToken, (req, res) => {
   const userId = req.user.userId;
   const following = db.getFollowing(userId);
@@ -449,9 +457,35 @@ app.get('/api/user/following', authenticateToken, (req, res) => {
   res.json(result);
 });
 
-// 获取粉丝列表
+// 获取当前用户的粉丝列表
 app.get('/api/user/followers', authenticateToken, (req, res) => {
   const userId = req.user.userId;
+  const followers = db.getFollowers(userId);
+  
+  const result = followers.map(user => ({
+    ...user,
+    isFollowing: db.hasFollowed(userId, user.id)
+  }));
+  
+  res.json(result);
+});
+
+// 获取指定用户的关注列表
+app.get('/api/users/:id/following', (req, res) => {
+  const userId = parseInt(req.params.id);
+  const following = db.getFollowing(userId);
+  
+  const result = following.map(user => ({
+    ...user,
+    isMutual: db.hasFollowed(user.id, userId)
+  }));
+  
+  res.json(result);
+});
+
+// 获取指定用户的粉丝列表
+app.get('/api/users/:id/followers', (req, res) => {
+  const userId = parseInt(req.params.id);
   const followers = db.getFollowers(userId);
   
   const result = followers.map(user => ({

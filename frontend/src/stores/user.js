@@ -26,6 +26,11 @@ export const useUserStore = defineStore('user', () => {
 
   function setUser(user) {
     currentUser.value = user
+    if (user && user.id) {
+      localStorage.setItem('userId', user.id)
+    } else {
+      localStorage.removeItem('userId')
+    }
   }
 
   function openLoginModal() {
@@ -55,6 +60,7 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     setToken(null)
     setUser(null)
+    localStorage.removeItem('userId')
     following.value = []
     followers.value = []
   }

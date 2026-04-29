@@ -57,10 +57,22 @@ export function getUserStats(userId) {
   return request(`/users/${userId}/stats`)
 }
 
+// 获取当前登录用户的关注列表
+export function getMyFollowing() {
+  return request('/user/following')
+}
+
+// 获取当前登录用户的粉丝列表
+export function getMyFollowers() {
+  return request('/user/followers')
+}
+
+// 获取指定用户的关注列表
 export function getFollowing(userId) {
   return request(`/users/${userId}/following`)
 }
 
+// 获取指定用户的粉丝列表
 export function getFollowers(userId) {
   return request(`/users/${userId}/followers`)
 }

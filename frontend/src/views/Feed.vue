@@ -10,8 +10,18 @@
         <div class="card-content">
           <h3 class="card-title">{{ post.title }}</h3>
           <div class="card-author-row">
-            <img :src="post.author?.avatar || 'https://picsum.photos/seed/default/50/50'" class="author-avatar">
-            <span class="author-name">{{ post.author?.username || '未知用户' }}</span>
+            <div class="author-info">
+              <img :src="post.author?.avatar || 'https://picsum.photos/seed/default/50/50'" class="author-avatar">
+              <span class="author-name">{{ post.author?.username || '未知用户' }}</span>
+            </div>
+            <button 
+              v-if="post.author?.id !== currentUserId" 
+              class="follow-btn-mini" 
+              :class="{ following: post.author?.isFollowing }"
+              @click.stop="toggleFollowUser(post.author)"
+            >
+              {{ post.author?.isFollowing ? '已关注' : '关注' }}
+            </button>
           </div>
           <div class="card-actions-row">
             <span class="action-btn" :class="{ liked: post.isLiked }" @click.stop="toggleLike(post)">
@@ -45,13 +55,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { usePostsStore } from '../stores/posts'
+import { useUserStore } from '../stores/user'
+import { toggleFollow } from '../api'
 import CommentModal from '../components/CommentModal.vue'
 
 const postsStore = usePostsStore()
+const userStore = useUserStore()
 const posts = computed(() => postsStore.allPosts)
 
 const showCommentModal = ref(false)
 const currentPost = ref(null)
+const currentUserId = computed(() => userStore.currentUser?.id)
 
 onMounted(() => {
   postsStore.fetchPosts()
@@ -79,6 +93,21 @@ function closeCommentModal() {
   currentPost.value = null
 }
 
+async function toggleFollowUser(author) {
+  if (!userStore.isLoggedIn) {
+    userStore.openLoginModal()
+    return
+  }
+  if (!author) return
+  try {
+    const result = await toggleFollow(author.id)
+    author.isFollowing = result.isFollowing
+  } catch (error) {
+    console.error('关注操作失败:', error)
+    alert(error.message || '操作失败')
+  }
+}
+
 function sharePost(post) {
   const shareUrl = window.location.origin + '/post/' + post.id
   const shareText = `${post.title} - 来自生活日记`
@@ -102,5 +131,40 @@ function sharePost(post) {
 <style scoped>
 .action-btn.collected {
   color: #f5a623;
+}
+
+.card-author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.follow-btn-mini {
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--primary-color);
+  color: white;
+  transition: all 0.2s;
+}
+
+.follow-btn-mini.following {
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.follow-btn-mini:hover {
+  opacity: 0.9;
 }
 </style>

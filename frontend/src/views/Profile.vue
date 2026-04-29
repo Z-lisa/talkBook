@@ -10,11 +10,11 @@
         </div>
         
         <div class="profile-stats">
-          <div class="stat-item" @click="showFollowing">
+          <div class="stat-item" @click="openFollowModal('following')">
             <div class="stat-num">{{ stats.following }}</div>
             <div class="stat-label">关注</div>
           </div>
-          <div class="stat-item" @click="showFollowers">
+          <div class="stat-item" @click="openFollowModal('followers')">
             <div class="stat-num">{{ stats.followers }}</div>
             <div class="stat-label">粉丝</div>
           </div>
@@ -25,8 +25,8 @@
         </div>
         
         <div class="profile-actions" v-if="isLoggedIn">
-          <button class="btn btn-primary">✏️ 编辑资料</button>
-          <button class="btn btn-secondary">⚙️ 设置</button>
+          <button class="btn btn-primary" @click="showComingSoon">✏️ 编辑资料</button>
+          <button class="btn btn-secondary" @click="showComingSoon">⚙️ 设置</button>
         </div>
       </aside>
       
@@ -76,6 +76,14 @@
         </div>
       </main>
     </div>
+
+    <!-- 关注/粉丝列表弹窗 -->
+    <FollowModal
+      :show="showFollowModal"
+      :type="followModalType"
+      @close="closeFollowModal"
+      @update="loadUserStats"
+    />
   </section>
 </template>
 
@@ -83,6 +91,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '../stores/user'
 import { usePostsStore } from '../stores/posts'
+import FollowModal from '../components/FollowModal.vue'
+import { getUserStats } from '../api'
 
 const userStore = useUserStore()
 const postsStore = usePostsStore()
@@ -97,28 +107,68 @@ const stats = ref({
   likes: 0
 })
 
+const showFollowModal = ref(false)
+const followModalType = ref('following')
+
 const userPosts = computed(() => postsStore.userPosts)
 const likedPosts = computed(() => postsStore.likedPosts)
 const collectedPosts = computed(() => postsStore.collectedPosts)
 
-onMounted(() => {
+const currentUserId = computed(() => {
+  if (user.value?.id) return user.value.id
+  const storedId = localStorage.getItem('userId')
+  return storedId ? parseInt(storedId) : null
+})
+
+onMounted(async () => {
+  console.log('Profile mounted')
+  await userStore.fetchUserInfo()
+  console.log('After fetchUserInfo, isLoggedIn:', isLoggedIn.value, 'user:', user.value)
   if (isLoggedIn.value) {
-    loadUserData()
+    await loadUserData()
+  } else {
+    const storedId = localStorage.getItem('userId')
+    const token = localStorage.getItem('token')
+    console.log('storedId:', storedId, 'token:', token)
+    if (storedId && token) {
+      await loadUserData()
+    }
   }
 })
 
-watch(() => isLoggedIn.value, (newVal) => {
+watch(() => isLoggedIn.value, async (newVal) => {
   if (newVal) {
-    loadUserData()
+    await loadUserData()
   }
 })
 
 async function loadUserData() {
-  if (!user.value?.id) return
-  await postsStore.fetchUserPosts(user.value.id)
+  console.log('loadUserData called, user:', user.value, 'currentUserId:', currentUserId.value)
+  const uid = currentUserId.value
+  if (!uid) {
+    console.log('没有userId，无法加载数据')
+    return
+  }
+  await postsStore.fetchUserPosts(uid)
   await postsStore.fetchLikedPosts()
   await postsStore.fetchCollectedPosts()
-  console.log('收藏的帖子:', collectedPosts.value)
+  await loadUserStats()
+}
+
+async function loadUserStats() {
+  const uid = currentUserId.value
+  console.log('loadUserStats called, uid:', uid)
+  if (!uid) {
+    console.log('没有userId，无法加载统计')
+    return
+  }
+  try {
+    const data = await getUserStats(uid)
+    console.log('获取到统计数据:', data)
+    stats.value = data
+  } catch (error) {
+    console.error('加载用户统计失败:', error)
+  }
 }
 
 async function switchTab(tab) {
@@ -145,11 +195,20 @@ function handleLoginClick() {
   }
 }
 
-function showFollowing() {
-  console.log('显示关注列表')
+function openFollowModal(type) {
+  if (!isLoggedIn.value) {
+    userStore.openLoginModal()
+    return
+  }
+  followModalType.value = type
+  showFollowModal.value = true
 }
 
-function showFollowers() {
-  console.log('显示粉丝列表')
+function closeFollowModal() {
+  showFollowModal.value = false
+}
+
+function showComingSoon() {
+  alert('功能暂未开发')
 }
 </script>
