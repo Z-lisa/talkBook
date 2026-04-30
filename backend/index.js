@@ -2,10 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const db = require('./database');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'xiaohongshu-secret-key-2024';
 
 app.use(cors());
@@ -590,13 +591,24 @@ async function initData() {
   db.toggleFollow(5, 2);
   db.toggleFollow(6, 3);
 
-  console.log('生活日记数据初始化完成');
-  console.log(`创建了 ${db.users.size} 个用户`);
-  console.log(`创建了 ${db.posts.size} 个生活日记`);
+  console.log('  生活日记数据初始化完成');
+  console.log(`  创建了 ${db.users.size} 个用户`);
+  console.log(`  创建了 ${db.posts.size} 个生活日记`);
 }
 
+// 静态文件服务 - 提供前端构建产物
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 兜底路由 - 支持前端路由
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // 启动服务器
-app.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('========================================');
+  console.log('  生活日记 - 服务已启动');
+  console.log(`  访问地址: http://localhost:${PORT}`);
   initData();
+  console.log('========================================');
 });
